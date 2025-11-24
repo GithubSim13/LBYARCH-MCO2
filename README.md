@@ -45,6 +45,12 @@ However, at the vector size of **10,000**, a performance divergence appeared:
 2.  **C Performance:** The C implementation registered a measurable time of `0.000033` seconds.
 3.  **Conclusion:** This demonstrates that for this specific workload, the hand-optimized Assembly code performed measurably faster than the C code. While C compilers are highly optimized, the direct register control in Assembly provided a slight edge in execution speed that became visible as the dataset size increased.
 
+## Video Demo
+
+This video demonstrates the source code, compilation, and successful execution of the program.
+
+[Watch the Project Demo Video](https://drive.google.com/file/d/12pv9-OmrbNiBEtFH1y-HZxO97AZGpBb0/view?usp=sharing)
+
 ## Files
 
 * `main.c`: C driver program (Input and Output, Memory Allocation, Correctness Checking, Performance Testing).
