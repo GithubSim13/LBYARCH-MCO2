@@ -5,6 +5,17 @@
 
 extern void calcAccel(int n, float* inMat, int* outArr);
 
+void cCalc(int n, float* mat, int* out) { // c ver of the asm code for correctness check
+    for (int i = 0; i < n; i++) {
+        float v1 = mat[i * 3];
+        float v2 = mat[i * 3 + 1];
+        float t = mat[i * 3 + 2];
+        float res = (v2 - v1) / 3.6f / t;
+
+        out[i] = (int)(res + 0.5f); // rounding logic equivalent to cvtss2si (round to nearest)
+    }
+}
+
 float randFloat(float min, float max) { // random num gen for the performance test
     float s = rand() / (float)RAND_MAX;
     return min + s * (max - min);
@@ -18,9 +29,11 @@ void check() {
     if (scanf("%d", &n) != 1) return;
 
     float* mat = (float*)malloc(n * 3 * sizeof(float));
-    int* out = (int*)malloc(n * sizeof(int));
 
-    if (!mat || !out) return;
+    int* outAsm = (int*)malloc(n * sizeof(int)); // alloc mem for asm
+    int* outC = (int*)malloc(n * sizeof(int)); // alloc mem for c
+
+    if (!mat || !outAsm || !outC) return;
 
     for (int i = 0; i < n; i++) {
         scanf(" %f, %f, %f",
@@ -29,14 +42,27 @@ void check() {
             &mat[i * 3 + 2]);
     }
 
-    calcAccel(n, mat, out);
+    calcAccel(n, mat, outAsm);
+    cCalc(n, mat, outC);
 
-    printf("\nOutput: Integer acceleration values (m/s^2)\n");
-    for (int i = 0; i < n; i++) 
-        printf("%d\n", out[i]);
+    printf("\n--- RESULTS COMPARISON ---\n");
+    printf("Row | ASM Result | C Result | Status\n");
+    printf("----|------------|----------|--------\n");
+
+    int errors = 0;
+    for (int i = 0; i < n; i++) {
+        printf(" %d  | %-10d | %-8d | ", i + 1, outAsm[i], outC[i]);
+
+        if (outAsm[i] == outC[i]) printf("MATCH\n");
+        else {
+            printf("ERROR\n");
+            errors++;
+        }
+    }
 
     free(mat);
-    free(out);
+    free(outAsm);
+    free(outC);
 }
 
 void perf() {
@@ -46,9 +72,9 @@ void perf() {
     int sCount = 4;
     int runs = 30;
 
-    printf("Running 30 loops per size. Please wait...\n\n");
-    printf("| %-10s | %-15s |\n", "Vector Size", "Avg Time (sec)");
-    printf("|------------|-----------------|\n");
+    printf("Running %d loops per size.\n\n", runs);
+    printf("| %-11s | %-15s | %-15s |\n", "Vector Size", "ASM Avg (sec)", "C Avg (sec)");
+    printf("|-------------|-----------------|-----------------|\n");
 
     for (int i = 0; i < sCount; i++) {
         int n = sizes[i];
@@ -56,30 +82,32 @@ void perf() {
         float* mat = (float*)malloc(n * 3 * sizeof(float));
         int* out = (int*)malloc(n * sizeof(int));
 
-        if (!mat || !out) {
-            printf("| %-10d | MEMORY ERROR    |\n", n);
-            continue;
-        }
-
         for (int j = 0; j < n * 3; j++)
             mat[j] = randFloat(0.0f, 200.0f);
 
-        double total = 0.0;
-
-        for (int r = 0; r < runs; r++) { // gets time and adds to total
+        double totalAsm = 0.0;
+        for (int r = 0; r < runs; r++) {
             clock_t t1 = clock();
             calcAccel(n, mat, out);
             clock_t t2 = clock();
-            total += ((double)(t2 - t1)) / CLOCKS_PER_SEC;
+            totalAsm += ((double)(t2 - t1)) / CLOCKS_PER_SEC;
         }
+        double avgAsm = totalAsm / runs;
 
-        double avg = total / runs;  // get avg here
-        printf("| %-10d | %-15.6f |\n", n, avg);
+        double totalC = 0.0;
+        for (int r = 0; r < runs; r++) {
+            clock_t t1 = clock();
+            cCalc(n, mat, out);
+            clock_t t2 = clock();
+            totalC += ((double)(t2 - t1)) / CLOCKS_PER_SEC;
+        }
+        double avgC = totalC / runs;
+
+        printf("| %-11d | %-15.6f | %-15.6f |\n", n, avgAsm, avgC);
 
         free(mat);
         free(out);
     }
-    printf("\nDone.\n");
 }
 
 int main() {
@@ -97,7 +125,7 @@ int main() {
     else printf("Invalid choice.\n");
 
     printf("\nPress Enter to exit...");
-    getchar(); 
+    getchar();
     getchar();
     return 0;
 }
